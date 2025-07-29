@@ -23,7 +23,7 @@ jobs:
         run: pip install requests
 
       - name: Run M3U8 extractor
-        run: python extract_and_format_m3u8.py
+        run: python stream/script/TF1.py
 
       - name: Commit and push changes
         env:
