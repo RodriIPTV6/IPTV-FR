@@ -41,7 +41,8 @@ def generate_proper_m3u8(m3u8_url, output_file="output.m3u8"):
 
 if __name__ == "__main__":
     STREAM_URL = "https://www.stream4free.tv/tf1-live-streaming"
-    OUTPUT_FILE = "tf1_stream.m3u8"
+    OUTPUT_DIR = "stream"
+    OUTPUT_FILE = os.path.join(OUTPUT_DIR, "tf1.m3u8")  # Chemin complet
     
     print("🔍 Recherche du lien M3U8...")
     m3u8_link = fetch_m3u8_from_page(STREAM_URL)
