@@ -32,7 +32,7 @@ def generate_proper_m3u8(m3u8_url, output_path):
         print(f"❌ Erreur lors de l'écriture du fichier : {e}")
 
 if __name__ == "__main__":
-    STREAM_URL = "https://www.tf1.fr/tf1/direct"
+    STREAM_URL = "https://endirecttv.com/tf1-direct/"
     OUTPUT_DIR = "stream"  # Dossier existant
     OUTPUT_FILE = os.path.join(OUTPUT_DIR, "tf1.m3u8")  # Chemin complet
 
