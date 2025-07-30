@@ -1,40 +1,41 @@
-name: Professional Stream Updater
+name: Ultimate IPTV Updater
 
 on:
   schedule:
-    - cron: '0 */2 * * *'  # Toutes les 2 heures
+    - cron: '0 */4 * * *'  # Toutes les 4 heures
   workflow_dispatch:
 
 jobs:
-  extract:
+  update:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    
+    timeout-minutes: 25
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GH_TOKEN }}
-          fetch-depth: 0
-          
-      - uses: actions/setup-python@v4
+          fetch-depth: 0  # Important pour l'historique Git complet
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          cache: 'pip'
-          
-      - name: Install advanced dependencies
+          cache: 'pip'  # Activation du cache pour les dépendances
+
+      - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install cloudscraper==1.2.60 urllib3==1.26.15
-          
-      - name: Run professional extractor
-        run: python stream/tf1.m3u8
-        
-      - name: Push updates
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run stream extractor
+        run: python stream/script/TF1.py
+
+      - name: Commit and push changes
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          git config --global user.name "Professional Updater"
-          git config --global user.email "updater@noreply.com"
-          git add stream/tf1.m3u8
-          git commit -m "🔄 Professional update - $(date +'%Y-%m-%d %H:%M')"
+          git config --global user.name "IPTV Updater"
+          git config --global user.email "updater@iptv.fr"
+          git add stream/
+          git commit -m "🔄 Automatic stream update $(date +'%Y-%m-%d %H:%M')"
           git push
