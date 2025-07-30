@@ -1,4 +1,3 @@
-# update_m3u8.py
 import requests
 import re
 import os
@@ -53,7 +52,7 @@ def extract_m3u8(html):
 
 if __name__ == "__main__":
     target_url = "https://www.stream4free.tv/tf1-live-streaming"
-    output_path = "streams/tf1.m3u8"
+    output_path = "stream/tf1.m3u8"
     
     print("🔍 Début de l'extraction...")
     html_content = fetch_with_retries(target_url)
