@@ -1,100 +1,134 @@
 import os
-import requests
 import re
 import time
 import random
 import cloudscraper
-from urllib.parse import urlparse
+from urllib.parse import urljoin
 
-class StreamExtractor:
+class UltimateStreamExtractor:
     def __init__(self):
-        self.scraper = cloudscraper.create_scraper()
-        self.retry_delay = 3
-        self.max_retries = 5
-        
-    def rotate_headers(self):
-        """Génère des headers aléatoires pour chaque requête"""
-        user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
-            "Mozilla/5.0 (Linux; Android 10; SM-G980F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+        self.scraper = cloudscraper.create_scraper(
+            browser={
+                'browser': 'chrome',
+                'platform': 'windows',
+                'desktop': True,
+                'mobile': False
+            }
+        )
+        self.retry_pattern = [3, 5, 8, 13]  # Backoff fibonacci
+
+    def _generate_headers(self):
+        """Génère des headers réalistes avec empreinte navigateur"""
+        browsers = [
+            {'chrome': '120.0.0.0', 'webkit': '537.36', 'os': 'Windows NT 10.0'},
+            {'chrome': '119.0.6045', 'webkit': '537.36', 'os': 'Macintosh'},
+            {'chrome': '120.0.0.0', 'webkit': '537.36', 'os': 'Linux'}
         ]
+        browser = random.choice(browsers)
         
         return {
-            "User-Agent": random.choice(user_agents),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "fr-FR,fr;q=0.5",
-            "Referer": "https://www.google.com/",
-            "DNT": "1",
-            "Upgrade-Insecure-Requests": "1"
+            'User-Agent': f'Mozilla/5.0 ({browser["os"]}) AppleWebKit/{browser["webkit"]} (KHTML, like Gecko) Chrome/{browser["chrome"]} Safari/{browser["webkit"]}',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'fr-FR,fr;q=0.9',
+            'Referer': random.choice([
+                'https://www.google.com/',
+                'https://www.facebook.com/',
+                'https://twitter.com/'
+            ]),
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'cross-site',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1'
         }
 
-    def stealth_request(self, url):
-        """Effectue une requête furtive avec contournement Cloudflare"""
-        for attempt in range(self.max_retries):
+    def _extract_with_retry(self, url):
+        """Tentative intelligente avec rotation d'empreinte"""
+        for i, delay in enumerate(self.retry_pattern):
             try:
-                self.scraper.headers.update(self.rotate_headers())
-                response = self.scraper.get(url, timeout=15)
+                self.scraper.headers = self._generate_headers()
+                response = self.scraper.get(url, timeout=20)
                 
                 if response.status_code == 403:
-                    raise requests.HTTPError("403 Forbidden")
+                    raise Exception(f"403 Forbidden (attempt {i+1})")
                 
-                if "cloudflare" in response.text.lower():
-                    print("⚠️ Protection Cloudflare détectée - Nouvelle tentative...")
-                    raise Exception("Cloudflare challenge")
-                
-                return response.text
+                if response.status_code == 200:
+                    if "access denied" in response.text.lower():
+                        raise Exception("Blockpage detected")
+                    return response.text
                 
             except Exception as e:
-                print(f"⏳ Tentative {attempt + 1} échouée: {str(e)}")
-                if attempt < self.max_retries - 1:
-                    time.sleep(self.retry_delay * (attempt + 1))
+                print(f"⚠️ Attempt {i+1} failed: {str(e)}")
+                if i < len(self.retry_pattern) - 1:
+                    sleep_time = delay + random.uniform(0, 2)
+                    print(f"⏳ Waiting {sleep_time:.1f}s...")
+                    time.sleep(sleep_time)
         
         return None
 
-    def extract_m3u8(self, html):
-        """Extrait les URLs M3U8 avec analyse approfondie"""
-        # Recherche dans les balises video
-        video_tags = re.findall(r'<video[^>]*>(.*?)</video>', html, re.DOTALL)
-        for tag in video_tags:
-            sources = re.findall(r'src=["\'](https?://[^"\']+\.m3u8[^"\']*)["\']', tag)
-            if sources:
-                return sources[0]
+    def _find_hidden_m3u8(self, html):
+        """Recherche avancée avec analyse DOM virtuel"""
+        # Méthode 1: Extraction directe
+        direct_sources = re.findall(
+            r'src=["\'](https?://[^"\']+\.m3u8(?:\?[^"\']+)?)["\']',
+            html,
+            re.IGNORECASE
+        )
         
-        # Recherche dans les configurations JS
-        js_configs = re.findall(r'(?:videojs|player)\(.*?\).setup\(({.*?})\);', html)
-        for config in js_configs:
+        # Méthode 2: Décodage JSON
+        json_matches = re.findall(
+            r'(?s)\bsources\s*:\s*(\[[^\]]+\])',
+            html
+        )
+        for match in json_matches:
             try:
-                config_data = json.loads(config.replace("'", '"'))
-                if 'sources' in config_data:
-                    for source in config_data['sources']:
-                        if source.get('type') == 'application/x-mpegURL':
-                            return source['src']
+                sources = json.loads(match.replace("'", '"'))
+                for source in sources:
+                    if isinstance(source, dict) and source.get('type') == 'application/x-mpegURL':
+                        return source['src']
             except:
                 continue
                 
-        return None
+        return direct_sources[0] if direct_sources else None
+
+    def get_stream(self, url):
+        """Processus complet d'extraction"""
+        print("🔍 Starting advanced extraction...")
+        html = self._extract_with_retry(url)
+        
+        if not html:
+            print("❌ Failed to bypass protections")
+            return None
+            
+        print("✅ Successfully retrieved page content")
+        m3u8_url = self._find_hidden_m3u8(html)
+        
+        if not m3u8_url:
+            print("⚠️ No M3U8 found in initial scan - Trying fallback methods...")
+            # Méthode alternative: recherche dans les scripts
+            scripts = re.findall(r'<script[^>]*>(.*?)</script>', html, re.DOTALL)
+            for script in scripts:
+                matches = re.search(r'(https?://[^\s"\']+\.m3u8[^\s"\']*)', script)
+                if matches:
+                    m3u8_url = matches.group(1)
+                    break
+        
+        return m3u8_url
 
 if __name__ == "__main__":
-    extractor = StreamExtractor()
+    extractor = UltimateStreamExtractor()
     target_url = "https://www.stream4free.tv/tf1-live-streaming"
-    output_path = "stream/tf1.m3u8"
     
-    print("🔍 Lancement de l'extraction furtive...")
-    html = extractor.stealth_request(target_url)
+    m3u8_url = extractor.get_stream(target_url)
     
-    if html:
-        print("✅ HTML récupéré avec succès")
-        m3u8_url = extractor.extract_m3u8(html)
-        
-        if m3u8_url:
-            print(f"🎯 URL M3U8 trouvée: {m3u8_url}")
-            os.makedirs("streams", exist_ok=True)
-            with open(output_path, "w") as f:
-                f.write("#EXTM3U\n#EXT-X-VERSION:3\n")
-                f.write(f"{m3u8_url}\n")
-            print(f"💾 Fichier sauvegardé: {output_path}")
-        else:
-            print("❌ Aucune URL M3U8 trouvée dans le code source")
+    if m3u8_url:
+        print(f"🎯 Found stream URL: {m3u8_url}")
+        os.makedirs("streams", exist_ok=True)
+        with open("streams/tf1.m3u8", "w") as f:
+            f.write("#EXTM3U\n")
+            f.write("#EXT-X-VERSION:3\n")
+            f.write(f"{m3u8_url}\n")
+        print("💾 Stream file saved successfully")
     else:
-        print("❌ Échec de la récupération après plusieurs tentatives")
+        print("❌ Critical failure - Could not extract stream")
+        exit(1)
