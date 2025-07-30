@@ -1,51 +1,72 @@
-import os  # ⚠️ Import manquant !
+# update_m3u8.py
 import requests
-from bs4 import BeautifulSoup
 import re
+import os
+import time
 
-def fetch_m3u8_from_page(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        m3u8_urls = re.findall(r'https?://[^\s"\']+\.m3u8', response.text)
-        return m3u8_urls[0] if m3u8_urls else None
-    except Exception as e:
-        print(f"❌ Erreur lors de la récupération du M3U8 : {e}")
-        return None
+CONFIG = {
+    "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "REFERER": "https://www.stream4free.tv/",
+    "RETRY_DELAY": 5,
+    "MAX_RETRIES": 3
+}
 
-def generate_proper_m3u8(m3u8_url, output_path):
-    """Génère un fichier M3U8 valide."""
-    try:
-        response = requests.get(m3u8_url, timeout=10)
-        response.raise_for_status()
-        
-        with open(output_path, "w") as f:
-            f.write("#EXTM3U\n")
-            f.write("#EXT-X-VERSION:3\n")
-            f.write("#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=1280x720\n")
-            f.write(f"{m3u8_url}\n")
-        print(f"✅ Fichier M3U8 mis à jour : {output_path}")
-    except Exception as e:
-        print(f"❌ Erreur lors de l'écriture du fichier : {e}")
+def fetch_with_retries(url):
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": CONFIG["USER_AGENT"],
+        "Referer": CONFIG["REFERER"],
+        "Accept-Language": "fr-FR,fr;q=0.9",
+    })
+    
+    for attempt in range(CONFIG["MAX_RETRIES"]):
+        try:
+            response = session.get(url, timeout=10)
+            response.raise_for_status()
+            
+            # Détection Cloudflare
+            if "cloudflare" in response.text.lower():
+                raise Exception("Protection Cloudflare détectée")
+                
+            return response.text
+            
+        except Exception as e:
+            print(f"⚠️ Tentative {attempt + 1} échouée : {str(e)}")
+            if attempt < CONFIG["MAX_RETRIES"] - 1:
+                time.sleep(CONFIG["RETRY_DELAY"])
+    
+    return None
+
+def extract_m3u8(html):
+    # Nouvelle regex avancée
+    patterns = [
+        r'(https?://[^\s"\']+\.m3u8(?:\?[^\s"\']+)?)',  # URL directe
+        r'src:\s*["\']([^"\']+\.m3u8)',  # Sources JS
+        r'fetch\("([^"]+\.m3u8)'  # Requêtes AJAX
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, html)
+        if matches:
+            return matches[0]
+    return None
 
 if __name__ == "__main__":
-    STREAM_URL = "https://www.livehdtv.com/ch123/"
-    OUTPUT_DIR = "stream"  # Dossier existant
-    OUTPUT_FILE = os.path.join(OUTPUT_DIR, "tf1.m3u8")  # Chemin complet
-
-    # Vérifie que le dossier existe (optionnel, si vous êtes sûr qu'il existe)
-    if not os.path.exists(OUTPUT_DIR):
-        print(f"⚠️ Le dossier '{OUTPUT_DIR}' n'existe pas. Création...")
-        os.makedirs(OUTPUT_DIR, exist_ok=True)  # Crée le dossier si absent
-
-    print("🔍 Recherche du lien M3U8...")
-    m3u8_link = fetch_m3u8_from_page(STREAM_URL)
+    target_url = "https://www.stream4free.tv/tf1-live-streaming"
+    output_path = "streams/tf1.m3u8"
     
-    if m3u8_link:
-        print(f"📡 Lien M3U8 trouvé : {m3u8_link}")
-        generate_proper_m3u8(m3u8_link, OUTPUT_FILE)
+    print("🔍 Début de l'extraction...")
+    html_content = fetch_with_retries(target_url)
+    
+    if html_content:
+        m3u8_url = extract_m3u8(html_content)
+        if m3u8_url:
+            print(f"✅ Lien M3U8 trouvé : {m3u8_url}")
+            os.makedirs("streams", exist_ok=True)
+            with open(output_path, "w") as f:
+                f.write(f"#EXTM3U\n#EXT-X-VERSION:3\n{m3u8_url}")
+            print("💾 Fichier sauvegardé avec succès")
+        else:
+            print("❌ Aucun lien M3U8 trouvé dans le code source")
     else:
-        print("❌ Aucun lien M3U8 valide trouvé.")
+        print("❌ Échec de la récupération après plusieurs tentatives")
