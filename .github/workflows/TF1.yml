@@ -31,6 +31,6 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add streams/tf1.m3u8  # Chemin relatif vers le fichier
+          git add stream/tf1.m3u8  # Chemin relatif vers le fichier
           git commit -m "Update M3U8 stream"
           git push https://$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git
