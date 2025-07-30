@@ -1,63 +1,75 @@
-import os
 import re
 import requests
-import time
-import json
-from urllib.parse import urljoin
+import os
+from urllib.parse import urlparse
 
-# Configuration du header dynamique
-def get_headers():
-    return {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://www.stream4free.tv/",
-        "X-Requested-With": "XMLHttpRequest"  # Important pour les requêtes AJAX
-    }
+def extract_m3u8_from_html(html):
+    """Extrait les URLs M3U8 du code HTML"""
+    patterns = [
+        r'<source\s+src=["\'](https?://[^"\']+\.m3u8[^"\']*)["\']',
+        r'videojs\(.*?\)\.setup\(.*?"sources"\s*:\s*\[(.*?)\]',
+        r'var\s+streamUrl\s*=\s*["\'](https?://[^"\']+\.m3u8[^"\']*)["\']'
+    ]
+    
+    found_urls = []
+    for pattern in patterns:
+        matches = re.findall(pattern, html, re.DOTALL)
+        found_urls.extend(matches)
+    
+    # Nettoyage des URLs
+    clean_urls = []
+    for url in found_urls:
+        if 'm3u8' in url:
+            # Supprime les paramètres inutiles
+            clean_url = url.split('?')[0] if '?' in url else url
+            clean_urls.append(clean_url)
+    
+    return list(set(clean_urls))  # Supprime les doublons
 
-def extract_videojs_config(html):
-    """Extrait la configuration Video.js depuis le code JavaScript"""
-    pattern = r'videojs\(.*?\).setup\(({.*?})\);'
-    match = re.search(pattern, html, re.DOTALL)
-    if match:
+def get_valid_m3u8(urls):
+    """Teste les URLs et retourne la première valide"""
+    for url in urls:
         try:
-            return json.loads(match.group(1).replace("'", '"'))
-        except json.JSONDecodeError:
-            pass
+            response = requests.head(url, timeout=5)
+            if response.status_code == 200:
+                return url
+        except:
+            continue
     return None
 
-def get_m3u8_url():
-    url = "https://www.stream4free.tv/tf1-live-streaming"
+def main():
+    target_url = "https://www.stream4free.tv/tf1-live-streaming"
+    output_dir = "stream"
+    output_file = os.path.join(output_dir, "tf1.m3u8")
     
     try:
-        # Première requête pour obtenir le HTML
-        response = requests.get(url, headers=get_headers(), timeout=10)
+        # Récupération du HTML
+        response = requests.get(target_url, timeout=10)
         response.raise_for_status()
         
-        # Analyse de la configuration Video.js
-        config = extract_videojs_config(response.text)
-        if config and 'sources' in config:
-            for source in config['sources']:
-                if source.get('type') == 'application/x-mpegURL':
-                    return source['src']
+        # Extraction des URLs M3U8
+        m3u8_urls = extract_m3u8_from_html(response.text)
         
-        # Fallback: Recherche alternative
-        m3u8_matches = re.findall(r'(https?://[^\s"\']+\.m3u8)', response.text)
-        if m3u8_matches:
-            return m3u8_matches[0]
-            
-    except Exception as e:
-        print(f"Erreur: {e}")
-    
-    return None
-
-if __name__ == "__main__":
-    m3u8_url = get_m3u8_url()
-    if m3u8_url:
-        print(f"Lien M3U8 trouvé: {m3u8_url}")
-        os.makedirs("streams", exist_ok=True)
-        with open("streams/tf1.m3u8", "w") as f:
+        if not m3u8_urls:
+            print("❌ Aucune URL M3U8 trouvée dans le code source")
+            exit(1)
+        
+        # Sélection de la meilleure URL
+        best_url = get_valid_m3u8(m3u8_urls) or m3u8_urls[0]
+        
+        # Création du fichier M3U8
+        os.makedirs(output_dir, exist_ok=True)
+        with open(output_file, "w") as f:
             f.write("#EXTM3U\n")
             f.write("#EXT-X-VERSION:3\n")
-            f.write(f"{m3u8_url}\n")
-    else:
-        print("Aucun lien M3U8 trouvé")
+            f.write(f"{best_url}\n")
+        
+        print(f"✅ Fichier M3U8 généré avec succès: {output_file}")
+        print(f"🔗 URL du flux: {best_url}")
+        
+    except Exception as e:
+        print(f"❌ Erreur: {str(e)}")
         exit(1)
+
+if __name__ == "__main__":
+    main()
