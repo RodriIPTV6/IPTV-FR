@@ -1,36 +1,40 @@
-name: Update M3U8 Stream TF1
+name: Professional Stream Updater
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Toutes les 3 heures
+    - cron: '0 */2 * * *'  # Toutes les 2 heures
   workflow_dispatch:
 
 jobs:
-  update-stream:
+  extract:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GH_TOKEN }}  # 🔥 Utilisation du secret ici
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+          
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: pip install requests cloudscraper
-
-      - name: Run M3U8 extractor
-        run: python stream/script/TF1.py
-
-      - name: Commit and push changes
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}  # ⚠️ Nécessaire pour l'authentification git
+          python-version: '3.11'
+          cache: 'pip'
+          
+      - name: Install advanced dependencies
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add stream/tf1.m3u8  # Chemin relatif vers le fichier
-          git commit -m "Update M3U8 stream"
-          git push https://$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git
+          pip install --upgrade pip
+          pip install cloudscraper==1.2.60 urllib3==1.26.15
+          
+      - name: Run professional extractor
+        run: python stream/tf1.m3u8
+        
+      - name: Push updates
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config --global user.name "Professional Updater"
+          git config --global user.email "updater@noreply.com"
+          git add stream/tf1.m3u8
+          git commit -m "🔄 Professional update - $(date +'%Y-%m-%d %H:%M')"
+          git push
