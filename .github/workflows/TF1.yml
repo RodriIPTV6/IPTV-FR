@@ -29,5 +29,7 @@ jobs:
         run: |
           git add stream/
           git commit -m "🔄 Auto-sync TF1 - $(date +'%Y-%m-%d %H:%M UTC')"
+          git config --global user.email "gamingrodrigo2009@hotmail.com"
+          git config --global user.name "RodriIPTV6"
           git remote set-url origin "https://$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
           git push
