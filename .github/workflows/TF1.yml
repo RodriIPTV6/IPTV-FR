@@ -21,7 +21,7 @@ jobs:
         run: pip install requests
       
       - name: Run sync script
-        run: python TF1.py
+        run: python stream/script/TF1.py
       
       - name: Commit and push
         env:
