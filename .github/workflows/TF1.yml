@@ -27,7 +27,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          git add streams/
+          git add stream/
           git commit -m "🔄 Auto-sync TF1 - $(date +'%Y-%m-%d %H:%M UTC')"
           git remote set-url origin "https://$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
           git push
