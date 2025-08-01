@@ -21,7 +21,8 @@ def extract_and_clean():
             os.makedirs("streams", exist_ok=True)
             with open(OUTPUT_PATH, "w") as f:
                 f.write("#EXTM3U\n")
-                f.write("#EXT-X-VERSION:3\n")
+                f.write("#EXT-X-VERSION:6\n")
+                f.write("#EXT-X-STREAM-INF:BANDWIDTH=3192758,AVERAGE-BANDWIDTH=2890952\n")
                 f.write(stream_url + "\n")
             
             print(f"✅ Fichier généré avec succès : {OUTPUT_PATH}")
