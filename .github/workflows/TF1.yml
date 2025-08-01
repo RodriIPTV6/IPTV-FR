@@ -2,7 +2,7 @@ name: TF1 Stream Syncer
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Toutes les 3 heures
+    - cron: '* */1 * * *'  # Toutes les 3 heures
   workflow_dispatch:
 
 jobs:
