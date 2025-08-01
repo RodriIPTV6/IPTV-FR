@@ -23,7 +23,7 @@ def extract_and_clean():
                 f.write("#EXTM3U\n")
                 f.write("#EXT-X-VERSION:6\n")
                 f.write("#EXT-X-INDEPENDENT-SEGMENTS\n")
-                f.write("#EXT-X-STREAM-INF:BANDWIDTH=3192758,AVERAGE-BANDWIDTH=2890952,RESOLUTION=1280x720,FRAME-RATE=25.000,CODECS="avc1.4D401F,mp4a.40.2",\n")
+                f.write("#EXT-X-STREAM-INF:BANDWIDTH=3192758,AVERAGE-BANDWIDTH=2890952,RESOLUTION=1280x720,FRAME-RATE=25.000,CODECS="avc1.4D401F,mp4a.40.2"\n")
                 f.write(stream_url + "\n")
             
             print(f"✅ Fichier généré avec succès : {OUTPUT_PATH}")
