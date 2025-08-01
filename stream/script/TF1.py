@@ -1,27 +1,39 @@
 import requests
 import os
+import re
 
-SOURCE_URL = "https://raw.githubusercontent.com/schumijo/iptv/refs/heads/main/playlists/mytf1/tf1.m3u8"
-OUTPUT_DIR = "stream"
-OUTPUT_FILE = os.path.join(OUTPUT_DIR, "tf1.m3u8")
+SOURCE_URL = "https://raw.githubusercontent.com/schumijo/iptv/main/playlists/mytf1/tf1.m3u8"
+OUTPUT_PATH = "stream/tf1.m3u8"
 
-def sync_m3u8():
+def extract_and_clean():
     try:
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        # Téléchargement du fichier
         response = requests.get(SOURCE_URL, timeout=10)
         response.raise_for_status()
         
-        # Écriture directe sans ligne supplémentaire
-        with open(OUTPUT_FILE, "w") as f:
-            f.write(response.text)  # Écrit seulement le contenu original
-        
-        print(f"✅ Fichier synchronisé : {OUTPUT_FILE}")
-        return True
+        # Extraction de la 7ème ligne (index 6 en Python)
+        lines = response.text.splitlines()
+        if len(lines) >= 7:
+            # Modification spécifique pour supprimer _1 seulement dans index_1.m3u8
+            stream_url = re.sub(r'(index)_1(\.m3u8)$', r'\1\2', lines[6])
+            
+            # Création du dossier et écriture
+            os.makedirs("streams", exist_ok=True)
+            with open(OUTPUT_PATH, "w") as f:
+                f.write("#EXTM3U\n")
+                f.write("#EXT-X-VERSION:3\n")
+                f.write(stream_url + "\n")
+            
+            print(f"✅ Fichier généré avec succès : {OUTPUT_PATH}")
+            print(f"🔗 URL finale : {stream_url}")  # Pour vérification
+            return True
+            
+        raise ValueError("Le fichier source n'a pas le format attendu")
         
     except Exception as e:
         print(f"❌ Erreur : {str(e)}")
         return False
 
 if __name__ == "__main__":
-    if not sync_m3u8():
+    if not extract_and_clean():
         exit(1)
