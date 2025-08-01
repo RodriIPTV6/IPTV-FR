@@ -1,41 +1,40 @@
 import requests
 import os
-import re
 
-SOURCE_URL = "https://raw.githubusercontent.com/schumijo/iptv/main/playlists/mytf1/tf1.m3u8"
-OUTPUT_PATH = "stream/tf1.m3u8"
+SOURCE_M3U = "https://raw.githubusercontent.com/Paradise-91/ParaTV/refs/heads/main/playlists/paratv/main/paratv.m3u"
+OUTPUT_FILE = "stream/tf1.m3u8"
 
-def extract_and_clean():
+def download_and_process():
     try:
-        # Téléchargement du fichier
-        response = requests.get(SOURCE_URL, timeout=10)
+        # Étape 1: Télécharger le fichier .m3u source
+        response = requests.get(SOURCE_M3U, timeout=10)
         response.raise_for_status()
-        
-        # Extraction de la 7ème ligne (index 6 en Python)
         lines = response.text.splitlines()
-        if len(lines) >= 7:
-            # Modification spécifique pour supprimer _1 seulement dans index_1.m3u8
-            stream_url = re.sub(r'(index)_1(\.m3u8)$', r'\1\2', lines[6])
-            
-            # Création du dossier et écriture
-            os.makedirs("streams", exist_ok=True)
-            with open(OUTPUT_PATH, "w") as f:
-                f.write("#EXTM3U\n")
-                f.write("#EXT-X-VERSION:6\n")
-                f.write("#EXT-X-INDEPENDENT-SEGMENTS\n")
-                f.write("#EXT-X-STREAM-INF:BANDWIDTH=3192758,AVERAGE-BANDWIDTH=2890952,RESOLUTION=1280x720,FRAME-RATE=25.000,CODECS="avc1.4D401F,mp4a.40.2"\n")
-                f.write(stream_url + "\n")
-            
-            print(f"✅ Fichier généré avec succès : {OUTPUT_PATH}")
-            print(f"🔗 URL finale : {stream_url}")  # Pour vérification
-            return True
-            
-        raise ValueError("Le fichier source n'a pas le format attendu")
         
+        # Vérifier qu'on a au moins 6 lignes
+        if len(lines) < 6:
+            raise ValueError("Le fichier source ne contient pas 6 lignes")
+
+        # Étape 2: Extraire l'URL de la 6ème ligne
+        m3u8_url = lines[5].strip()
+        print(f"🔗 URL trouvée: {m3u8_url}")
+
+        # Étape 3: Télécharger le contenu du fichier M3U8
+        m3u8_response = requests.get(m3u8_url, timeout=15)
+        m3u8_response.raise_for_status()
+        
+        # Étape 4: Sauvegarder le contenu brut
+        os.makedirs("stream", exist_ok=True)
+        with open(OUTPUT_FILE, "w") as f:
+            f.write(m3u8_response.text)
+        
+        print(f"✅ Fichier sauvegardé: {OUTPUT_FILE}")
+        return True
+
     except Exception as e:
-        print(f"❌ Erreur : {str(e)}")
+        print(f"❌ Erreur: {str(e)}")
         return False
 
 if __name__ == "__main__":
-    if not extract_and_clean():
+    if not download_and_process():
         exit(1)
