@@ -1,0 +1,35 @@
+name: TFX Stream Syncer
+
+on:
+  schedule:
+    - cron: '* */1 * * *'  # Toutes les 3 heures
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: pip install requests
+      
+      - name: Run sync script
+        run: python stream/script/TFX.py
+      
+      - name: Commit and push
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+          git add stream/
+          git config --global user.email "gamingrodrigo2009@hotmail.com"
+          git config --global user.name "RodriIPTV6"
+          git commit -m "Update TFX stream"
+          git push origin HEAD:main
