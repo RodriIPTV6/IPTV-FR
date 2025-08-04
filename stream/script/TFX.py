@@ -15,7 +15,7 @@ def download_and_process():
         if len(lines) < 42:
             raise ValueError("Le fichier source ne contient pas 6 lignes")
         # Étape 2: Extraire l'URL de la 6ème ligne
-        m3u8_url = lines[5].strip()
+        m3u8_url = lines[41].strip()
         print(f"🔗 URL trouvée: {m3u8_url}")
 
         # Étape 3: Télécharger le contenu du fichier M3U8
