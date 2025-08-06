@@ -18,7 +18,7 @@ if m3u8_matches:
     print("Lien M3U8 trouvé :", m3u8_url)
 
     # Étape 3 : Créer un fichier m3u8 de redirection
-    with open("nouveau.m3u8", "w") as f:
+    with open("stream/SPORT_TV_2.m3u8", "w") as f:
         f.write("#EXTM3U\n")
         f.write("#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=1280x720\n")
         f.write(m3u8_url + "\n")
