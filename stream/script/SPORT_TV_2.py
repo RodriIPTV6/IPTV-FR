@@ -52,7 +52,7 @@ def save_m3u8(content, filename="streams/sporttv.m3u8"):
         f.write(content + "\n")
 
 if __name__ == "__main__":
-    TARGET_URL = "https://piratetv.pro/sport-tv-2/"
+    TARGET_URL = "https://sportsonline.si/channels/pt/sporttv2.php"
     
     print("🔍 Début de l'extraction...")
     
