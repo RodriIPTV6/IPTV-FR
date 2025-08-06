@@ -2,34 +2,42 @@ name: SPORTTV 2 Stream Syncer
 
 on:
   schedule:
-    - cron: '* */1 * * *'  # Toutes les 3 heures
+    - cron: '0 */3 * * *'  # Toutes les 6 heures
   workflow_dispatch:
 
 jobs:
-  sync:
+  update:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     
     steps:
       - uses: actions/checkout@v3
       
-      - uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           
-      - name: Installer dépendances
-        run: pip install beautifulsoup4 requests
-      
-      - name: Run sync script
-        run: python stream/script/SPORT_TV_2.py
-      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install cloudscraper selenium webdriver-manager
+          
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+          
+      - name: Run extractor
+        run: |
+          python stream/script/SPORT_TV_2.py
+          
       - name: Commit and push
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
           git add stream/
-          git config --global user.email "gamingrodrigo2009@hotmail.com"
-          git config --global user.name "RodriIPTV6"
-          git commit -m "Update SportTV 2 stream"
-          git push origin HEAD:main
+          git commit -m "🔄 Auto-update SportTV 2 stream"
+          git push
