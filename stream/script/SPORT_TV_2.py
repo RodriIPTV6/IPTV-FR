@@ -33,7 +33,7 @@ def extract_with_selenium(url):
     try:
         # Attendre que le player soit chargé
         WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.TAG_NAME, 'video'))
+            EC.presence_of_element_located((By.TAG_NAME, 'video')))
         
         # Extraire les sources vidéo
         html = driver.page_source
